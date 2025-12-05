@@ -1,0 +1,65 @@
+"""
+Average GPA by Section with per‑section histograms (Avg GPA reference line).
+- Uses the uploaded file (single sheet Excel or CSV).
+- Hard-coded columns: 'Section' and 'Unposted Current Grade'.
+- Omits 'Student, Test'.
+"""
+
+import pandas as pd
+import numpy as np
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+from collections import Counter
+
+# Load the uploaded file automatically
+df = pd.read_excel('uploaded_file.xlsx')  # or pd.read_csv('uploaded_file.csv')
+
+# Drop test student
+df = df[df['Student'].astype(str).str.strip() != 'Student, Test']
+
+# Hard-coded columns
+SECTION_COL = 'Section'
+GRADE_COL   = 'Unposted Current Grade'
+
+# GPA mapping
+GRADE_TO_POINTS = {
+    'A': 4.0, 'A-': 3.7,
+    'B+': 3.3, 'B': 3.0, 'B-': 2.7,
+    'C+': 2.3, 'C': 2.0, 'C-': 1.7,
+    'D+': 1.3, 'D': 1.0, 'D-': 0.7,
+    'F': 0.0
+}
+LABELS_ORDER = list(GRADE_TO_POINTS.keys())
+LABEL_POSITIONS = [GRADE_TO_POINTS[lbl] for lbl in LABELS_ORDER]
+
+# Clean data
+df['_section'] = df[SECTION_COL].astype(str).str.strip()
+df['_grade']   = df[GRADE_COL].astype(str).str.strip().str.upper()
+
+sections = sorted(df['_section'].unique())
+summary_rows = []
+
+for sec in sections:
+    sub = df[df['_section'] == sec]
+    valid = sub['_grade'].isin(GRADE_TO_POINTS)
+    grades = sub['_grade'][valid]
+    gpa_vals = grades.map(GRADE_TO_POINTS)
+    avg_gpa = gpa_vals.mean() if len(gpa_vals) else np.nan
+
+    # Plot
+    counts = Counter(grades)
+    freqs = [counts.get(lbl, 0) for lbl in LABELS_ORDER]
+    fig, ax = plt.subplots(figsize=(9, 5))
+    ax.bar(LABEL_POSITIONS, freqs, width=0.15, color='#4C78A8')
+    ax.axvline(avg_gpa, color='#F58518', linestyle='--')
+    ax.text(avg_gpa, max(freqs)+1, f'Avg GPA = {avg_gpa:.1f}', ha='center', color='#F58518')
+    ax.set_xticks(LABEL_POSITIONS)
+    ax.set_xticklabels(LABELS_ORDER)
+    ax.set_title(f'{sec} — Avg GPA')
+    fig.savefig(f'GPA_hist_{sec}.png', dpi=200)
+    plt.close(fig)
+
+    summary_rows.append({'Section': sec, 'Average GPA': avg_gpa})
+
+pd.DataFrame(summary_rows).to_csv('Average_GPA_by_section_summary.csv', index=False)
