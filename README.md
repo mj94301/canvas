@@ -1,4 +1,4 @@
-How to Use
+How to Use GPA CALCULATOR
 
 Upload your Canvas Grades export file (Excel or CSV) in the same environment where you run the script.
 Ensure column names match:
